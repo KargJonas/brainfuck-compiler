@@ -10,66 +10,46 @@ function replaceCharAt(str, index, char) {
 }
 
 function compile(input) {
-  const braces = {};
+  const jumps = {};
   let tmp = input;
 
   while (true) {
     const match = tmp.match(/\[[^\[\]]*\]/);
 
     if (!match) {
-      const hasOpen = tmp.includes("[");
-      const hasClose = tmp.includes("]");
-
-      if (hasOpen && !hasClose) throw new Error("Brace opened but not closed");
-      if (hasClose && !hasOpen) throw new Error("Brace closed but not opened");
-
+      const hasOpenBrace = tmp.includes("[");
+      const hasCloseBrace = tmp.includes("]");
+      if (hasOpenBrace && !hasCloseBrace) throw new Error("Brace opened but not closed");
+      if (hasCloseBrace && !hasOpenBrace) throw new Error("Brace closed but not opened");
       break;
     }
 
     const start = match.index;
     const end = start + match[0].length - 1;
 
-    braces[start] = end;
+    jumps[start] = end;
     tmp = replaceCharAt(tmp, start, "x");
     tmp = replaceCharAt(tmp, end, "x");
   }
 
-  Object.entries(braces).map(([open, close]) => (braces[close] = open | 0));
+  Object.entries(jumps).map(([open, close]) => (jumps[close] = open | 0));
 
-  for (let i = 0; i < input.length; i++) {
-    switch (input[i]) {
-      case ">":
-        pointer++;
-        break;
+  let programState;
 
-      case "<":
-        pointer--;
-        break;
+  const lookup = {
+    ">": () => pointer++,
+    "<": () => pointer--,
+    "+": () => mem[pointer]++,
+    "-": () => mem[pointer]--,
+    ".": () => console.log(mem[pointer]),
+    ",": () => mem[pointer] = inputBuffer.shift() | 0,
+    "[": () => mem[pointer] === 0 ? programState = jumps[programState] + 1 : 0,
+    "]": () => mem[pointer] !== 0 ? programState = jumps[programState] : 0,
+  };
 
-      case "+":
-        mem[pointer]++;
-        break;
-
-      case "-":
-        mem[pointer]--;
-        break;
-
-      case ".":
-        console.log(mem[pointer]);
-        break;
-
-      case ",":
-        mem[pointer] = inputBuffer.shift() | 0;
-        break;
-
-      case "[":
-        if (mem[pointer] === 0) i = braces[i] + 1;
-        break;
-
-      case "]":
-        if (mem[pointer] !== 0) i = braces[i];
-        break;
-    }
+  for (programState = 0; programState < input.length; programState++) {
+    const command = lookup[input[programState]];
+    if (command) command();
   }
 }
 

@@ -73,4 +73,4 @@ function compile(input, memSize = 128) {
 }
 
 // To test it:
-compile(testProgram, 128);
+console.log(compile(testProgram, 128));
